@@ -232,4 +232,38 @@ describe('DashboardPage: user-selected company graph', () => {
     expect(screen.queryByLabelText('Selected company: NVDA')).not.toBeInTheDocument();
     await waitFor(() => expect(getHistory).toHaveBeenCalledWith('AMD', '3m'));
   });
+
+  describe('window in the URL', () => {
+    it.each([
+      ['7d', 'Last 7 days'],
+      ['3m', 'Last quarter'],
+    ])('selects the %s tab when the URL says so', async (value, label) => {
+      window.history.replaceState(null, '', `/?window=${value}`);
+      render(<DashboardPage provider={new MockProvider()} />);
+
+      expect(screen.getByRole('tab', { name: label })).toHaveAttribute('aria-selected', 'true');
+      expect(await screen.findByRole('table')).toHaveTextContent(`${label} performance`);
+    });
+
+    it('falls back to the current day for an unknown value', async () => {
+      window.history.replaceState(null, '', '/?window=1y');
+      render(<DashboardPage provider={new MockProvider()} />);
+
+      expect(screen.getByRole('tab', { name: 'Current day' })).toHaveAttribute('aria-selected', 'true');
+      await screen.findByRole('table');
+    });
+
+    it('writes the window to the URL on tab click, keeping other params and adding no history entry', async () => {
+      window.history.replaceState(null, '', '/?ref=lab');
+      const before = window.history.length;
+      render(<DashboardPage provider={new MockProvider()} />);
+      await screen.findByRole('table');
+
+      await userEvent.click(screen.getByRole('tab', { name: 'Last 7 days' }));
+
+      expect(window.location.search).toBe('?ref=lab&window=7d');
+      expect(window.history.length).toBe(before);
+      expect(await screen.findByRole('table')).toHaveTextContent('Last 7 days performance');
+    });
+  });
 });

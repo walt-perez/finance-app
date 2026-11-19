@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import type { MarketDataProvider } from '../../shared/MarketDataProvider';
-import type { TimeWindow } from '../../shared/types';
 import { QuoteCard } from '../components/cards/QuoteCard';
 import { ChartCard } from '../components/charts/ChartCard';
 import { ComparisonLineChart } from '../components/charts/ComparisonLineChart';
@@ -10,6 +9,7 @@ import { PerformanceTable } from '../components/ranking/PerformanceTable';
 import { SYMBOLS } from '../config/companies';
 import { useHistory } from '../hooks/useHistory';
 import { useQuotes } from '../hooks/useQuotes';
+import { useUrlWindow } from '../hooks/useUrlWindow';
 import { marketData } from '../services';
 
 interface Props {
@@ -19,7 +19,7 @@ interface Props {
 
 /** The only component that composes data hooks with presentational pieces. */
 export function DashboardPage({ provider = marketData }: Props) {
-  const [window, setWindow] = useState<TimeWindow>('1d');
+  const [window, setWindow] = useUrlWindow();
   const [selected, setSelected] = useState<string | null>(null);
   const quotes = useQuotes(provider, SYMBOLS);
   const history = useHistory(provider, window, SYMBOLS);

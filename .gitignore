@@ -1,0 +1,14 @@
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Environment and logs
+.env
+.env.*
+*.log
+
+# Build output and dependencies (finance-app/.gitignore also covers these)
+node_modules/
+dist/
+coverage/

@@ -1,0 +1,25 @@
+:root {
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  color: #161616;
+  background: #f4f4f4;
+}
+body { margin: 0; }
+.dashboard { max-width: 1000px; margin: 0 auto; padding: 24px 16px; }
+h1 { margin: 0 0 16px; }
+.card { background: #fff; border: 1px solid #e0e0e0; border-radius: 4px; padding: 16px; margin-bottom: 16px; }
+.card-header h2 { margin: 0; font-size: 1.1rem; }
+.muted { color: #6f6f6f; margin: 2px 0; font-size: 0.85rem; }
+.quote-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.quote-card { border: 1px solid #e0e0e0; border-radius: 4px; padding: 12px; }
+.quote-card h3 { margin: 0; }
+.price { font-size: 1.4rem; margin: 4px 0; }
+.up { color: #198038; }
+.down { color: #da1e28; }
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.tab { padding: 8px 16px; border: 1px solid #c6c6c6; background: #fff; cursor: pointer; border-radius: 4px; }
+.tab.active { background: #0f62fe; color: #fff; border-color: #0f62fe; }
+.state { margin: 8px 0; }
+.state-error { color: #da1e28; }
+.ranking { width: 100%; border-collapse: collapse; }
+.ranking caption { text-align: left; font-weight: 600; margin-bottom: 8px; }
+.ranking th, .ranking td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e0e0e0; }

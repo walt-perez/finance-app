@@ -28,3 +28,7 @@ h1 { margin: 0 0 16px; }
 .symbol-picker input[aria-invalid='true'] { border-color: #da1e28; }
 .symbol-picker button { padding: 8px 16px; border: 1px solid #0f62fe; background: #0f62fe; color: #fff; border-radius: 4px; cursor: pointer; }
 .symbol-picker .state { flex-basis: 100%; margin: 0; }
+.company-list { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 12px 0; }
+.company-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid #c6c6c6; border-radius: 16px; background: #f4f4f4; }
+.company-chip button { border: 0; background: none; cursor: pointer; font-size: 1rem; line-height: 1; color: #6f6f6f; }
+.symbol-picker button:disabled, .symbol-picker input:disabled { opacity: 0.5; cursor: not-allowed; }

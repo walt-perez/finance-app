@@ -128,4 +128,22 @@ describe('ComparisonLineChart', () => {
     render(<ComparisonLineChart window="1d" series={[series('ZZZ', [100, 101])]} />);
     expect(screen.getByText('ZZZ')).toBeInTheDocument();
   });
+
+  it('draws unconfigured symbols in distinct colors and honors explicit colors', () => {
+    const { container, rerender } = render(
+      <ComparisonLineChart window="1d" series={[series('AAA', [100, 101]), series('BBB', [100, 102])]} />,
+    );
+    const strokes = () => [...container.querySelectorAll('.recharts-line-curve')].map((p) => p.getAttribute('stroke'));
+    const [a, b] = strokes();
+    expect(a).not.toBe(b);
+
+    rerender(
+      <ComparisonLineChart
+        window="1d"
+        series={[series('AAA', [100, 101]), series('BBB', [100, 102])]}
+        colors={{ AAA: '#123456' }}
+      />,
+    );
+    expect(strokes()[0]).toBe('#123456');
+  });
 });

@@ -6,7 +6,9 @@ import { ComparisonLineChart } from '../components/charts/ComparisonLineChart';
 import { SymbolPicker } from '../components/layout/SymbolPicker';
 import { WINDOW_LABELS, WindowTabs } from '../components/layout/WindowTabs';
 import { PerformanceTable } from '../components/ranking/PerformanceTable';
-import { SYMBOLS } from '../config/companies';
+import { CompetitorManager } from '../components/layout/CompetitorManager';
+import { DEFAULT_COMPETITORS, PRIMARY_SYMBOL, assignColors } from '../config/companies';
+import { useCompetitors } from '../hooks/useCompetitors';
 import { useHistory } from '../hooks/useHistory';
 import { useQuotes } from '../hooks/useQuotes';
 import { useUrlWindow } from '../hooks/useUrlWindow';
@@ -21,8 +23,11 @@ interface Props {
 export function DashboardPage({ provider = marketData }: Props) {
   const [window, setWindow] = useUrlWindow();
   const [selected, setSelected] = useState<string | null>(null);
-  const quotes = useQuotes(provider, SYMBOLS);
-  const history = useHistory(provider, window, SYMBOLS);
+  const { competitors, add, remove } = useCompetitors(provider, PRIMARY_SYMBOL, DEFAULT_COMPETITORS);
+  const symbols = [PRIMARY_SYMBOL, ...competitors];
+  const colors = assignColors(symbols);
+  const quotes = useQuotes(provider, symbols);
+  const history = useHistory(provider, window, symbols);
   // Reuses the same data path as the main comparison; no symbols means no requests.
   const selectedHistory = useHistory(provider, window, selected ? [selected] : []);
   // useHistory briefly keeps the previous symbol's state after `selected` changes; ignore it.
@@ -34,7 +39,7 @@ export function DashboardPage({ provider = marketData }: Props) {
     : null;
   const allFailed = !history.loading && history.series.length === 0 && history.errors.length > 0;
   const quotedSymbols = new Set(quotes.quotes.map((q) => q.symbol));
-  const missingQuotes = quotes.loading || quotes.error ? [] : SYMBOLS.filter((s) => !quotedSymbols.has(s));
+  const missingQuotes = quotes.loading || quotes.error ? [] : symbols.filter((s) => !quotedSymbols.has(s));
 
   return (
     <main className="dashboard">
@@ -53,6 +58,8 @@ export function DashboardPage({ provider = marketData }: Props) {
         </div>
       </ChartCard>
 
+      <CompetitorManager primary={PRIMARY_SYMBOL} competitors={competitors} onAdd={add} onRemove={remove} />
+
       <WindowTabs value={window} onChange={setWindow} />
 
       <ChartCard
@@ -63,7 +70,7 @@ export function DashboardPage({ provider = marketData }: Props) {
         empty={history.series.length === 0}
       >
         {partialError && <p role="alert" className="state state-error">{partialError}</p>}
-        <ComparisonLineChart series={history.series} window={window} />
+        <ComparisonLineChart series={history.series} window={window} colors={colors} />
       </ChartCard>
 
       <ChartCard title="Ranking" loading={history.loading} empty={history.series.length === 0}>

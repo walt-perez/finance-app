@@ -39,7 +39,7 @@ flowchart LR
 | A time window | `shared/types.ts`, `server/windows.ts`, `src/services/mockProvider.ts`, `src/components/layout/WindowTabs.tsx` |
 | A chart | New component under `src/components/charts/`, wrapped in `ChartCard` |
 | A data source | New class implementing `MarketDataProvider` |
-| User-selected company graph (Part 2) | New `SymbolPicker` component, selected-symbol state in `DashboardPage`, a second `useHistory` call, a `ChartCard` + `ComparisonLineChart`. Reuse `normalizeSymbol` for validation. |
+| Another per-symbol view | Same pattern as the user-selected company graph: a component that validates input with `normalizeSymbol`, state in `DashboardPage`, another `useHistory` call, and a `ChartCard` + `ComparisonLineChart`. |
 
 ## Validation before every PR
 
@@ -49,3 +49,7 @@ npm run lint && npm run typecheck && npm test && npm run build
 ```
 
 Link the issue in the PR (`Closes #N`) and tick the acceptance criteria in the PR template.
+
+## User-selected company graph
+
+`SymbolPicker` (`src/components/layout/`) validates input with `normalizeSymbol` before reporting anything, so malformed tickers never reach the data layer. `DashboardPage` holds the chosen symbol and calls `useHistory(provider, window, [symbol])`, which returns nothing and makes no requests while no symbol is selected. The card follows the active time window. Because `useHistory` keeps the previous symbol's data for one render after the symbol changes, the page keeps only series that match the current symbol; `DashboardPage.test.tsx` has a test that fails if that filter is removed.

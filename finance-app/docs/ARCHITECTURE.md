@@ -53,3 +53,7 @@ Link the issue in the PR (`Closes #N`) and tick the acceptance criteria in the P
 ## User-selected company graph
 
 `SymbolPicker` (`src/components/layout/`) validates input with `normalizeSymbol` before reporting anything, so malformed tickers never reach the data layer. `DashboardPage` holds the chosen symbol and calls `useHistory(provider, window, [symbol])`, which returns nothing and makes no requests while no symbol is selected. The card follows the active time window. Because `useHistory` keeps the previous symbol's data for one render after the symbol changes, the page keeps only series that match the current symbol; `DashboardPage.test.tsx` has a test that fails if that filter is removed.
+
+## Time window in the URL
+
+The active window lives in the `?window=1d|7d|3m` query parameter, read and written by `useUrlWindow` (`src/hooks/`). A missing or unknown value falls back to `1d`. Tab clicks use `history.replaceState`, so the page does not reload, the back button is not filled with tab switches, and other query parameters and the hash are preserved. The hook reads the URL once on mount; it does not listen for `popstate`, which is fine while nothing else pushes history entries. `src/test/setup.ts` resets the URL after each test so URL state cannot leak between tests.

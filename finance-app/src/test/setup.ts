@@ -3,7 +3,11 @@ import { cleanup } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, vi } from 'vitest';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  // replaceState persists across tests in jsdom; reset so URL-backed state does not leak.
+  if (typeof window !== 'undefined') window.history.replaceState(null, '', '/');
+});
 
 // jsdom has no layout, so ResponsiveContainer measures 0x0 and logs warnings.
 // Render children at a fixed size instead.

@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart LR
-  Page[DashboardPage] --> Hooks[useQuotes / useHistory]
+  Page[DashboardPage] --> Hooks[useQuotes / useHistory / useCompetitors]
   Hooks --> Provider{MarketDataProvider}
   Provider --> Mock[MockProvider]
   Provider --> Api[ApiProvider - fetch /api]
@@ -22,7 +22,7 @@ flowchart LR
 2. A new data source implements `MarketDataProvider` in `shared/MarketDataProvider.ts`.
 3. Derived numbers (percent change, rebasing, ranking) live in `src/services/normalize.ts` as pure functions with unit tests.
 4. Time windows map to Yahoo queries in one place: `server/windows.ts`.
-5. Companies are configured only in `src/config/companies.ts` (IBM + at most four).
+5. `src/config/companies.ts` defines IBM, the default competitors, display names and colors. The active list lives in page state (`useCompetitors`), always starts with IBM, and never exceeds `MAX_COMPANIES`. Nothing else hard-codes symbols.
 6. Errors are `MarketDataError` with an `ApiErrorCode`. The server maps codes to HTTP status; the UI shows the message.
 7. One failing symbol must not blank the dashboard (`useHistory` settles per symbol).
 8. Tests and CI use `MockProvider` or an injected fake. CI never calls Yahoo.
@@ -35,7 +35,7 @@ flowchart LR
 
 | To add | Touch |
 |---|---|
-| A company | `src/config/companies.ts` |
+| A default company | `src/config/companies.ts` (also set a name and color; users add others at run time) |
 | A time window | `shared/types.ts`, `server/windows.ts`, `src/services/mockProvider.ts`, `src/components/layout/WindowTabs.tsx` |
 | A chart | New component under `src/components/charts/`, wrapped in `ChartCard` |
 | A data source | New class implementing `MarketDataProvider` |
@@ -57,3 +57,13 @@ Link the issue in the PR (`Closes #N`) and tick the acceptance criteria in the P
 ## Time window in the URL
 
 The active window lives in the `?window=1d|7d|3m` query parameter, read and written by `useUrlWindow` (`src/hooks/`). A missing or unknown value falls back to `1d`. Tab clicks use `history.replaceState`, so the page does not reload, the back button is not filled with tab switches, and other query parameters and the hash are preserved. The hook reads the URL once on mount; it does not listen for `popstate`, which is fine while nothing else pushes history entries. `src/test/setup.ts` resets the URL after each test so URL state cannot leak between tests.
+
+## Adding and removing competitors
+
+`CompetitorManager` (`src/components/layout/`) shows the compared companies and reuses `SymbolPicker` for input. `useCompetitors` (`src/hooks/`) owns the list and the rules, and `DashboardPage` builds `[IBM, ...competitors]` and passes it to `useQuotes` and `useHistory`, so cards, chart and ranking follow the list.
+
+- IBM is the `PRIMARY_SYMBOL`: it is not in the competitor list and has no remove control.
+- `add` resolves to `null` on success or a message. It rejects malformed tickers (`normalizeSymbol`), duplicates (including IBM) and anything past `MAX_COMPANIES`, all without a network call.
+- A symbol is added only after `provider.getQuotes([symbol])` returns a quote for it. Yahoo silently drops unknown symbols, so an empty result means "No market data found for X". Lookup failures are reported and nothing is added.
+- Colors: configured companies keep theirs; others take `EXTRA_COLORS` in list order via `assignColors`. `DashboardPage` passes the result to `ComparisonLineChart` as `colors`.
+- The list is not persisted; a reload returns to the defaults.

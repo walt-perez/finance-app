@@ -1,11 +1,13 @@
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { Series, TimeWindow } from '../../../shared/types';
-import { COMPANIES } from '../../config/companies';
+import { COMPANIES, assignColors } from '../../config/companies';
 import { buildComparisonRows } from '../../services/normalize';
 
 interface Props {
   series: Series[];
   window: TimeWindow;
+  /** Line color per symbol. Symbols not listed get a color from `assignColors`. */
+  colors?: Record<string, string>;
 }
 
 function formatTick(iso: string, window: TimeWindow): string {
@@ -16,8 +18,9 @@ function formatTick(iso: string, window: TimeWindow): string {
 }
 
 /** Pure presentational chart: all series rebased to 100 so companies are comparable. */
-export function ComparisonLineChart({ series, window }: Props) {
+export function ComparisonLineChart({ series, window, colors }: Props) {
   const rows = buildComparisonRows(series);
+  const palette = { ...assignColors(series.map((s) => s.symbol)), ...colors };
   return (
     <div style={{ width: '100%', height: 320 }}>
       <ResponsiveContainer>
@@ -38,7 +41,7 @@ export function ComparisonLineChart({ series, window }: Props) {
                 type="monotone"
                 dataKey={s.symbol}
                 name={company?.name ?? s.symbol}
-                stroke={company?.color ?? '#666'}
+                stroke={palette[s.symbol]}
                 strokeWidth={s.symbol === 'IBM' ? 3 : 1.5}
                 dot={false}
                 connectNulls

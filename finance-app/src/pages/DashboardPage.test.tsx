@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { MarketDataProvider } from '../../shared/MarketDataProvider';
 import { MarketDataError } from '../../shared/validation';
+import { EXTRA_COLORS } from '../config/companies';
 import { MockProvider } from '../services/mockProvider';
 import { DashboardPage } from './DashboardPage';
 
@@ -264,6 +265,141 @@ describe('DashboardPage: user-selected company graph', () => {
       expect(window.location.search).toBe('?ref=lab&window=7d');
       expect(window.history.length).toBe(before);
       expect(await screen.findByRole('table')).toHaveTextContent('Last 7 days performance');
+    });
+  });
+});
+
+describe('DashboardPage: add and remove competitors', () => {
+  const add = async (symbol: string) => {
+    await userEvent.type(screen.getByLabelText('Competitor ticker'), symbol);
+    await userEvent.click(screen.getByRole('button', { name: 'Add competitor' }));
+  };
+  const rankingRows = () => within(screen.getByRole('table')).getAllByRole('row').slice(1);
+
+  it('starts with IBM and the four default competitors, and IBM cannot be removed', async () => {
+    render(<DashboardPage provider={new MockProvider()} />);
+    await screen.findByRole('table');
+
+    for (const s of ['MSFT', 'ORCL', 'SAP', 'CRM']) {
+      expect(screen.getByRole('button', { name: `Remove ${s}` })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole('button', { name: 'Remove IBM' })).not.toBeInTheDocument();
+  });
+
+  it('removes a competitor from quotes, ranking and chart requests', async () => {
+    const mock = new MockProvider();
+    const getHistory = vi.spyOn(mock, 'getHistory');
+    render(<DashboardPage provider={mock} />);
+    await screen.findByRole('table');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Remove ORCL' }));
+
+    await waitFor(() => expect(screen.queryByLabelText('ORCL quote')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('table')).not.toHaveTextContent('ORCL'));
+    expect(rankingRows()).toHaveLength(4);
+    expect(screen.getByLabelText('IBM quote')).toBeInTheDocument();
+    getHistory.mockClear();
+    await userEvent.click(screen.getByRole('tab', { name: 'Last 7 days' }));
+    await waitFor(() => expect(getHistory).toHaveBeenCalledWith('IBM', '7d'));
+    expect(getHistory.mock.calls.map(([s]) => s)).not.toContain('ORCL');
+  });
+
+  it('adds a competitor after one was removed, with its quote, chart data and ranking row', async () => {
+    const mock = new MockProvider();
+    const getHistory = vi.spyOn(mock, 'getHistory');
+    render(<DashboardPage provider={mock} />);
+    await screen.findByRole('table');
+    await userEvent.click(screen.getByRole('button', { name: 'Remove CRM' }));
+    await waitFor(() => expect(screen.queryByLabelText('CRM quote')).not.toBeInTheDocument());
+
+    await add('nvda');
+
+    expect(await screen.findByLabelText('NVDA quote')).toBeInTheDocument();
+    await waitFor(() => expect(getHistory).toHaveBeenCalledWith('NVDA', '1d'));
+    await waitFor(() => expect(screen.getByRole('table')).toHaveTextContent('NVDA'));
+    expect(screen.getByRole('button', { name: 'Remove NVDA' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Competitor ticker')).toHaveValue('');
+  });
+
+  it('refuses a sixth company with a visible message and disables the control at the limit', async () => {
+    render(<DashboardPage provider={new MockProvider()} />);
+    await screen.findByRole('table');
+
+    expect(screen.getByRole('button', { name: 'Add competitor' })).toBeDisabled();
+    expect(screen.getByText(/Limit reached/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('NVDA quote')).not.toBeInTheDocument();
+  });
+
+  it('rejects a duplicate competitor', async () => {
+    render(<DashboardPage provider={new MockProvider()} />);
+    await screen.findByRole('table');
+    await userEvent.click(screen.getByRole('button', { name: 'Remove CRM' }));
+
+    await add('msft');
+
+    expect(await screen.findByText('MSFT is already on the dashboard.')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('MSFT quote')).toHaveLength(1);
+  });
+
+  it('rejects a malformed ticker', async () => {
+    render(<DashboardPage provider={new MockProvider()} />);
+    await screen.findByRole('table');
+    await userEvent.click(screen.getByRole('button', { name: 'Remove CRM' }));
+
+    await add('12!');
+
+    expect(await screen.findByText(/is not a valid ticker symbol/)).toBeInTheDocument();
+  });
+
+  it('names an unknown ticker and does not add it', async () => {
+    const mock = new MockProvider();
+    const unknown: MarketDataProvider = {
+      getQuotes: async (s) => (s.includes('ZZZZ') ? [] : mock.getQuotes(s)),
+      getHistory: (symbol, window) => mock.getHistory(symbol, window),
+    };
+    render(<DashboardPage provider={unknown} />);
+    await screen.findByRole('table');
+    await userEvent.click(screen.getByRole('button', { name: 'Remove CRM' }));
+
+    await add('zzzz');
+
+    expect(await screen.findByText('No market data found for ZZZZ.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remove ZZZZ' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('ZZZZ quote')).not.toBeInTheDocument();
+  });
+
+  it('keeps removing and re-adding the same competitor working', async () => {
+    render(<DashboardPage provider={new MockProvider()} />);
+    await screen.findByRole('table');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Remove SAP' }));
+    await waitFor(() => expect(screen.queryByLabelText('SAP quote')).not.toBeInTheDocument());
+    await add('sap');
+
+    expect(await screen.findByLabelText('SAP quote')).toBeInTheDocument();
+  });
+
+  it('keeps an added company on its own color even when an earlier addition has no history', async () => {
+    const mock = new MockProvider();
+    const noHistory: MarketDataProvider = {
+      getQuotes: (s) => mock.getQuotes(s),
+      getHistory: (symbol, window) =>
+        symbol === 'AAAA' ? Promise.reject(new MarketDataError('UPSTREAM_ERROR', 'boom')) : mock.getHistory(symbol, window),
+    };
+    const { container } = render(<DashboardPage provider={noHistory} />);
+    await screen.findByRole('table');
+    await userEvent.click(screen.getByRole('button', { name: 'Remove CRM' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove SAP' }));
+    await add('aaaa');
+    await screen.findByLabelText('AAAA quote');
+    await add('bbbb');
+    await screen.findByLabelText('BBBB quote');
+
+    // AAAA is the first extra (EXTRA_COLORS[0]) and has no line; BBBB must still be the second (EXTRA_COLORS[1]).
+    await waitFor(() => {
+      const strokes = [...container.querySelectorAll('.recharts-line-curve')].map((p) => p.getAttribute('stroke'));
+      expect(strokes).toContain(EXTRA_COLORS[1]);
+      expect(strokes).not.toContain(EXTRA_COLORS[0]);
     });
   });
 });
